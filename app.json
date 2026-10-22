@@ -1,27 +1,23 @@
 {
   "expo": {
-    "name": "Distribuidora de Alimentos",
-    "slug": "semana-01-proyecto",
+    "name": "mi-app-semana02",
+    "slug": "mi-app-semana02",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "platforms": ["ios", "android"],
     "splash": {
-      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#0d1117"
     },
     "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.bootcamp.semana01"
+      "supportsTablet": false
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0d1117"
-      },
-      "package": "com.bootcamp.semana01"
-    },
-    "sdkVersion": "53.0.0"
+      }
+    }
   }
 }

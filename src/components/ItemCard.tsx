@@ -1,6 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+/**
+ * ItemCard
+ * Tarjeta reutilizable que muestra un producto de la distribuidora:
+ * nombre, SKU, presentación, precio, stock y categoría.
+ */
+import React from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Item } from '../types';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../theme';
 
 interface ItemCardProps {
   item: Item;
@@ -8,96 +14,96 @@ interface ItemCardProps {
 }
 
 export function ItemCard({ item, onPress }: ItemCardProps): React.JSX.Element {
-  const [added, setAdded] = useState<boolean>(false);
+  // Estilo dinámico: el color del stock depende de la cantidad disponible.
+  // 0 = agotado (rojo), 20 o menos = poco stock (naranja), más = normal (verde).
+  const stockColor =
+    item.stock === 0
+      ? COLORS.error
+      : item.stock <= 20
+        ? COLORS.warning
+        : COLORS.success;
+  const stockLabel = item.stock === 0 ? 'Agotado' : `Stock: ${item.stock}`;
 
-  function handlePress(): void {
-    setAdded(!added);
-    onPress(item);
-  }
+  // Precio en COP con separador de miles (ej. $48.000)
+  const priceLabel = `$${item.price.toLocaleString('es-CO')}`;
 
   return (
-    <View style={styles.card}>
-      <Image source={{ uri: item.imageUri }} style={styles.cardImage} resizeMode="cover" />
-      <View style={styles.cardBody}>
-        <Text style={styles.cardName}>{item.name}</Text>
-        <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
-        <View style={styles.row}>
-          <Text style={styles.cardPrice}>${item.price.toLocaleString('es-CO')}</Text>
-          <Text style={styles.cardStock}>Stock: {item.stock}</Text>
-        </View>
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            added && styles.buttonAdded,
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={handlePress}
-        >
-          <Text style={styles.buttonText}>
-            {added ? '✓ Agregado al pedido' : 'Agregar al pedido'}
-          </Text>
-        </Pressable>
+    <Pressable
+      // Array de estilos: el estilo base + el de "presionado" solo mientras se toca
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      onPress={() => onPress(item)}
+      accessibilityRole="button"
+      accessibilityLabel={item.name}
+    >
+      <Text style={styles.itemName}>{item.name}</Text>
+
+      <Text style={styles.fieldText}>
+        SKU: {item.sku} · {item.unit}
+      </Text>
+
+      <View style={styles.row}>
+        <Text style={styles.price}>{priceLabel}</Text>
+        {/* Estilo en línea solo para el color dinámico del stock */}
+        <Text style={[styles.fieldText, { color: stockColor }]}>
+          {stockLabel}
+        </Text>
       </View>
-    </View>
+
+      <View style={styles.badge}>
+        <Text style={styles.badgeText}>{item.category}</Text>
+      </View>
+    </Pressable>
   );
 }
 
+// Todos los valores salen de src/theme (sin números ni colores sueltos).
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#161b22',
-    borderRadius: 12,
-    marginBottom: 12,
-    overflow: 'hidden',
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.base,
+    marginHorizontal: SPACING.base,
+    marginVertical: SPACING.xs,
     borderWidth: 1,
-    borderColor: '#30363d',
+    borderColor: COLORS.border,
   },
-  cardImage: {
-    width: '100%',
-    height: 160,
+  cardPressed: {
+    backgroundColor: COLORS.surfaceAlt,
   },
-  cardBody: {
-    padding: 16,
-    gap: 4,
+  itemName: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.xs,
   },
-  cardName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#8b949e',
+  fieldText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs / 2,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
-  cardPrice: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#3fb950',
+  price: {
+    fontSize: TYPOGRAPHY.size.base,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.accent,
   },
-  cardStock: {
-    fontSize: 13,
-    color: '#8b949e',
+  badge: {
+    alignSelf: 'flex-start',
+    marginTop: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.accentDim,
   },
-  button: {
-    marginTop: 10,
-    backgroundColor: '#238636',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonAdded: {
-    backgroundColor: '#1f6feb',
-  },
-  buttonPressed: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontWeight: '600',
+  badgeText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    color: COLORS.accent,
+    textTransform: 'capitalize',
   },
 });
