@@ -1,7 +1,6 @@
 // src/screens/SavedScreen.tsx
-// Pantalla de guardados: muestra todos los ítems que el usuario guardó.
-// Lee el estado directamente desde el savedStore (sin props).
-// Demuestra que el mismo store Zustand mantiene consistencia entre tabs.
+// Segunda pestaña: "Mi pedido".
+// Lee el estado de cliente desde Zustand (no desde TanStack Query).
 
 import React from 'react';
 import {
@@ -14,18 +13,12 @@ import {
   type ListRenderItem,
 } from 'react-native';
 
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../theme';
-import type { Item } from '../types';
-
-// TODO: importar el store
 import { useCartStore } from '../stores/cartStore';
-
-// ============================================================
-// SUB-COMPONENTE: SavedItem
-// ============================================================
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../theme';
+import type { Product } from '../types';
 
 interface SavedItemProps {
-  item: Item;
+  item: Product;
   onRemove: () => void;
 }
 
@@ -44,14 +37,14 @@ function SavedItem({ item, onRemove }: SavedItemProps): React.JSX.Element {
           {item.name}
         </Text>
         <Text style={styles.cardDescription} numberOfLines={1}>
-          {item.description}
+          ${item.price.toLocaleString('es-CO')} / {item.unit}
         </Text>
       </View>
 
       <Pressable
         style={({ pressed }) => [styles.removeButton, pressed && { opacity: 0.6 }]}
         onPress={onRemove}
-        accessibilityLabel={`Quitar ${item.name} de guardados`}
+        accessibilityLabel={`Quitar ${item.name} de mi pedido`}
       >
         <Text style={styles.removeButtonText}>✕</Text>
       </Pressable>
@@ -59,23 +52,13 @@ function SavedItem({ item, onRemove }: SavedItemProps): React.JSX.Element {
   );
 }
 
-// ============================================================
-// PANTALLA: SavedScreen
-// ============================================================
-
 export function SavedScreen(): React.JSX.Element {
-  // TODO: conectar con el savedStore
-  // const items     = useSavedStore((state) => state.items);
-  // const removeItem = useSavedStore((state) => state.removeItem);
-  // const clearAll  = useSavedStore((state) => state.clearAll);
-
-  // Placeholder hasta que el store esté implementado
   const items = useCartStore((state) => state.items);
   const removeItem = useCartStore((state) => state.removeItem);
   const clearAll = useCartStore((state) => state.clearAll);
-  const total = items.reduce((sum, i) => sum + i.price, 0);
+  const total = items.reduce((sum, item) => sum + item.price, 0);
 
-  const renderItem: ListRenderItem<Item> = ({ item }) => (
+  const renderItem: ListRenderItem<Product> = ({ item }) => (
     <SavedItem item={item} onRemove={() => removeItem(item.id)} />
   );
 
@@ -83,7 +66,7 @@ export function SavedScreen(): React.JSX.Element {
     <View style={styles.container}>
       <FlatList
         data={items}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -91,7 +74,8 @@ export function SavedScreen(): React.JSX.Element {
           items.length > 0 ? (
             <View style={styles.header}>
               <Text style={styles.sectionLabel}>
-                {items.length} producto{items.length !== 1 ? 's' : ''} · Total ${total.toLocaleString('es-CO')}
+                {items.length} producto{items.length !== 1 ? 's' : ''} · Total $
+                {total.toLocaleString('es-CO')}
               </Text>
               <Pressable onPress={clearAll} style={styles.clearButton}>
                 <Text style={styles.clearButtonText}>Limpiar todo</Text>
@@ -101,7 +85,7 @@ export function SavedScreen(): React.JSX.Element {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>☆</Text>
+            <Text style={styles.emptyIcon}>🛒</Text>
             <Text style={styles.emptyTitle}>Tu pedido está vacío</Text>
             <Text style={styles.emptySubtitle}>
               Ve al catálogo y agrega productos a tu pedido.
@@ -112,10 +96,6 @@ export function SavedScreen(): React.JSX.Element {
     </View>
   );
 }
-
-// ============================================================
-// ESTILOS
-// ============================================================
 
 const styles = StyleSheet.create({
   container: {
@@ -132,11 +112,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: SPACING.sm,
+    gap: SPACING.sm,
   },
   sectionLabel: {
     ...TYPOGRAPHY.label,
     textTransform: 'uppercase',
     letterSpacing: 1,
+    flex: 1,
   },
   clearButton: {
     padding: SPACING.xs,
@@ -174,6 +156,7 @@ const styles = StyleSheet.create({
   },
   cardDescription: {
     ...TYPOGRAPHY.caption,
+    color: COLORS.success,
   },
   removeButton: {
     width: 32,

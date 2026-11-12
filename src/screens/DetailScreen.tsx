@@ -1,46 +1,74 @@
 // src/screens/DetailScreen.tsx
-// Pantalla de detalle: muestra la información completa de un ítem
-// y permite guardarlo / quitarlo usando el store de Zustand.
-// Esta pantalla demuestra cómo acceder al store desde cualquier screen.
+// Detalle del producto. Usa useProductById para intentar traer
+// datos frescos del servidor y mantiene el botón de "Mi pedido"
+// conectado al store de Zustand.
 
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 
+import { useProductById } from '../hooks/useProducts';
+import { useCartStore } from '../stores/cartStore';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../theme';
 import type { HomeStackParamList } from '../navigation/types';
 
-import { ITEMS } from '../data/mockData';
-import { useCartStore } from '../stores/cartStore';
-import type { Item } from '../types';
-
 type DetailRouteProp = RouteProp<HomeStackParamList, 'HomeDetail'>;
 
-// ============================================================
-// PANTALLA: DetailScreen
-// ============================================================
-
 export function DetailScreen(): React.JSX.Element {
-    const route = useRoute<DetailRouteProp>();
+  const route = useRoute<DetailRouteProp>();
   const { id, name } = route.params;
 
-  const item: Item | undefined = ITEMS.find((i) => i.id === id);
+  const { data: item, isLoading, isError, refetch, error } = useProductById(id);
 
-  // Se suscribe al dato (no a la función isItemSaved) para que el botón se actualice
-  const isSaved = useCartStore((state) => state.items.some((i) => i.id === id));
+  // Selector específico: el botón se actualiza cuando cambia este producto.
+  const isSaved = useCartStore((state) =>
+    state.items.some((product) => product.id === id),
+  );
   const addItem = useCartStore((state) => state.addItem);
   const removeItem = useCartStore((state) => state.removeItem);
 
   const handleToggleSave = (): void => {
+    if (!item) return;
+
     if (isSaved) {
       removeItem(id);
-    } else if (item) {
+    } else {
       addItem(item);
     }
   };
+
+  // Solo mostramos el spinner si no tenemos ni siquiera datos en caché.
+  if (isLoading && !item) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={COLORS.accent} />
+        <Text style={styles.loadingText}>Cargando detalle...</Text>
+      </View>
+    );
+  }
+
+  if (isError && !item) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>No se pudo cargar el detalle</Text>
+        <Text style={styles.errorDetail}>{error.message}</Text>
+        <Pressable style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.retryButtonText}>Reintentar</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      {/* Imagen del ítem */}
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {item && (
         <Image
           source={item.image}
@@ -50,11 +78,10 @@ export function DetailScreen(): React.JSX.Element {
         />
       )}
 
-      {/* Información principal */}
       <View style={styles.info}>
-        <Text style={styles.title}>{name}</Text>
+        <Text style={styles.title}>{item?.name ?? name}</Text>
         <Text style={styles.id}>ID: {id}</Text>
-        
+
         {item && (
           <>
             <Text style={styles.price}>
@@ -67,14 +94,7 @@ export function DetailScreen(): React.JSX.Element {
           </>
         )}
       </View>
-      
 
-      {/* ──────────────────────────────────────────────────── */}
-      {/* BOTÓN GUARDAR / QUITAR — conectado al store Zustand  */}
-      {/* ──────────────────────────────────────────────────── */}
-      {/* Este botón demuestra el estado compartido entre pantallas:
-          al guardar aquí, el badge del Tab "Guardados" se actualiza
-          automáticamente sin necesidad de pasar props ni callbacks. */}
       <Pressable
         style={({ pressed }) => [
           styles.saveButton,
@@ -82,26 +102,42 @@ export function DetailScreen(): React.JSX.Element {
           pressed && styles.saveButtonPressed,
         ]}
         onPress={handleToggleSave}
+        disabled={!item}
         testID="save-button"
       >
-        <Text style={[styles.saveButtonText, isSaved && styles.saveButtonTextActive]}>
-          {isSaved ? '★  Guardado' : '☆  Guardar'}
+        <Text
+          style={[
+            styles.saveButtonText,
+            isSaved && styles.saveButtonTextActive,
+          ]}
+        >
+          {isSaved ? '✓ Guardado en mi pedido' : '+ Guardar en mi pedido'}
         </Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
-
-// ============================================================
-// ESTILOS
-// ============================================================
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  content: {
     padding: SPACING.lg,
     gap: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.md,
+    padding: SPACING.lg,
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    ...TYPOGRAPHY.caption,
   },
   hero: {
     width: '100%',
@@ -127,10 +163,15 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: 24,
     marginTop: SPACING.sm,
-    
   },
-  price: { ...TYPOGRAPHY.h3, color: COLORS.success },
-  meta: { ...TYPOGRAPHY.caption, marginTop: SPACING.sm },
+  price: {
+    ...TYPOGRAPHY.h3,
+    color: COLORS.success,
+  },
+  meta: {
+    ...TYPOGRAPHY.caption,
+    marginTop: SPACING.sm,
+  },
   saveButton: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.md,
@@ -138,7 +179,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     paddingVertical: SPACING.md,
     alignItems: 'center',
-    marginTop: 'auto',
   },
   saveButtonActive: {
     backgroundColor: COLORS.accent,
@@ -154,5 +194,25 @@ const styles = StyleSheet.create({
   },
   saveButtonTextActive: {
     color: COLORS.background,
+  },
+  errorText: {
+    ...TYPOGRAPHY.h3,
+    color: COLORS.error,
+    textAlign: 'center',
+  },
+  errorDetail: {
+    ...TYPOGRAPHY.caption,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: COLORS.accent,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+  },
+  retryButtonText: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.background,
+    fontWeight: '600',
   },
 });

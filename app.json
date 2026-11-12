@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "week04-zustand",
-    "slug": "week04-zustand",
+    "name": "week05-networking-tanstack-query",
+    "slug": "week05-networking-tanstack-query",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "dev.bootcamp.week04zustand"
+      "bundleIdentifier": "dev.bootcamp.week05tanstackquery"
     },
     "android": {
-      "package": "dev.bootcamp.week04zustand"
+      "package": "dev.bootcamp.week05tanstackquery"
     },
     "plugins": [
       "expo-status-bar",

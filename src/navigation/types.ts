@@ -8,11 +8,9 @@ export type RootTabParamList = {
 
 export type HomeStackParamList = {
   HomeList: undefined;
-  // TODO: agrega campos extra según tu dominio
-  // Ejemplo (Biblioteca):  author: string; isbn: string;
-  // Ejemplo (Cine):        director: string; year: number;
   HomeDetail: {
-    id: string;
+    id: number;
     name: string;
   };
+  CreateProduct: undefined;
 };
