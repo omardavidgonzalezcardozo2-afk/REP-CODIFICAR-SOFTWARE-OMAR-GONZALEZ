@@ -2,7 +2,7 @@
 // QueryClientProvider en la raíz + navegación.
 //
 // Regla importante:
-//   - Estado del servidor (productos, loading, error) → TanStack Query
+//   - Estado del servidor (catálogo, loading, error) → TanStack Query
 //   - Estado del cliente (mi pedido) → Zustand
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

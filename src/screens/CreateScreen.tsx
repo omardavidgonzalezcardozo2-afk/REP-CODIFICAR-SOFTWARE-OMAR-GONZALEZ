@@ -1,4 +1,4 @@
-// src/screens/CreateProductScreen.tsx
+// src/screens/CreateScreen.tsx
 // Formulario para crear un producto.
 // Demuestra useMutation + invalidateQueries + estados isPending/error.
 
@@ -18,34 +18,22 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { useCreateProduct } from '../hooks/useProducts';
+import { CATEGORIES, CATEGORY_LABELS } from '../constants/categories';
+import { useCreateItem } from '../hooks/useItems';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../theme';
 import type { ProductCategory } from '../types';
 import type { HomeStackParamList } from '../navigation/types';
 
-type CreateNavProp = NativeStackNavigationProp<HomeStackParamList, 'CreateProduct'>;
+type CreateNavProp = NativeStackNavigationProp<HomeStackParamList, 'HomeCreate'>;
 
-const CATEGORIES: ProductCategory[] = [
-  'granos',
-  'lacteos',
-  'carnes',
-  'bebidas',
-  'verduras',
-  'abarrotes',
-];
+// Acepta coma o punto como separador decimal.
+function parseNumeric(value: string): number {
+  return Number(value.replace(',', '.').trim());
+}
 
-const CATEGORY_LABELS: Record<ProductCategory, string> = {
-  granos: 'Granos',
-  lacteos: 'Lácteos',
-  carnes: 'Carnes',
-  bebidas: 'Bebidas',
-  verduras: 'Verduras',
-  abarrotes: 'Abarrotes',
-};
-
-export function CreateProductScreen(): React.JSX.Element {
+export function CreateScreen(): React.JSX.Element {
   const navigation = useNavigation<CreateNavProp>();
-  const { mutate, isPending, isError, error } = useCreateProduct();
+  const { mutate, isPending, isError, error } = useCreateItem();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -56,8 +44,8 @@ export function CreateProductScreen(): React.JSX.Element {
   const [formError, setFormError] = useState<string | null>(null);
 
   function handleSubmit(): void {
-    const parsedPrice = Number(price.replace(',', '.'));
-    const parsedStock = Number(stock);
+    const parsedPrice = parseNumeric(price);
+    const parsedStock = parseNumeric(stock);
 
     if (!name.trim()) {
       setFormError('El nombre del producto es obligatorio.');
@@ -70,7 +58,7 @@ export function CreateProductScreen(): React.JSX.Element {
     }
 
     if (!Number.isFinite(parsedStock) || parsedStock < 0) {
-      setFormError('El stock debe ser un número igual o mayor que cero.');
+      setFormError('Las existencias deben ser un número igual o mayor que cero.');
       return;
     }
 
@@ -79,7 +67,8 @@ export function CreateProductScreen(): React.JSX.Element {
     mutate(
       {
         name: name.trim(),
-        description: description.trim() || 'Producto disponible para distribución.',
+        description:
+          description.trim() || 'Producto disponible para distribución.',
         price: parsedPrice,
         stock: parsedStock,
         unit: unit.trim() || 'unidad',
@@ -93,7 +82,8 @@ export function CreateProductScreen(): React.JSX.Element {
     );
   }
 
-  const canSubmit = name.trim().length > 0 && price.trim().length > 0 && !isPending;
+  const canSubmit =
+    name.trim().length > 0 && price.trim().length > 0 && !isPending;
 
   return (
     <KeyboardAvoidingView
@@ -144,14 +134,14 @@ export function CreateProductScreen(): React.JSX.Element {
               style={styles.input}
               value={price}
               onChangeText={setPrice}
-              placeholder="9800"
+              placeholder="3989"
               placeholderTextColor={COLORS.textMuted}
               keyboardType="numeric"
             />
           </View>
 
           <View style={[styles.field, styles.flex]}>
-            <Text style={styles.fieldLabel}>Stock</Text>
+            <Text style={styles.fieldLabel}>Existencias</Text>
             <TextInput
               style={styles.input}
               value={stock}
@@ -183,6 +173,8 @@ export function CreateProductScreen(): React.JSX.Element {
                 <Pressable
                   key={option}
                   onPress={() => setCategory(option)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   style={[styles.chip, selected && styles.chipSelected]}
                 >
                   <Text

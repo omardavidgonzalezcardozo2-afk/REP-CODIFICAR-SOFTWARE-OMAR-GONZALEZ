@@ -1,5 +1,5 @@
 // src/screens/HomeScreen.tsx
-// Pantalla principal: lista de productos cargada desde la API con useQuery.
+// Pantalla principal: catálogo cargado desde la API con useQuery.
 // Maneja loading, error, vacío y pull-to-refresh.
 
 import React from 'react';
@@ -13,26 +13,26 @@ import {
   View,
   type ListRenderItem,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 
-import { useProducts } from '../hooks/useProducts';
+import { useItems } from '../hooks/useItems';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../theme';
-import type { Product } from '../types';
+import type { Item } from '../types';
 import type { HomeStackParamList } from '../navigation/types';
 
 type HomeScreenNavProp = NativeStackNavigationProp<HomeStackParamList, 'HomeList'>;
 
 // ============================================================
-// SUB-COMPONENTE: ProductCard
+// SUB-COMPONENTE: ItemCard
 // ============================================================
 
-interface ProductCardProps {
-  item: Product;
+interface ItemCardProps {
+  item: Item;
   onPress: () => void;
 }
 
-function ProductCard({ item, onPress }: ProductCardProps): React.JSX.Element {
+function ItemCard({ item, onPress }: ItemCardProps): React.JSX.Element {
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
@@ -57,7 +57,7 @@ function ProductCard({ item, onPress }: ProductCardProps): React.JSX.Element {
           <Text style={styles.cardPrice}>
             ${item.price.toLocaleString('es-CO')} / {item.unit}
           </Text>
-          <Text style={styles.cardStock}>Stock: {item.stock}</Text>
+          <Text style={styles.cardStock}>Existencias: {item.stock}</Text>
         </View>
       </View>
 
@@ -72,7 +72,7 @@ function ProductCard({ item, onPress }: ProductCardProps): React.JSX.Element {
 
 export function HomeScreen(): React.JSX.Element {
   const navigation = useNavigation<HomeScreenNavProp>();
-  const { data, isLoading, isError, isFetching, refetch, error } = useProducts();
+  const { data, isLoading, isError, isFetching, refetch, error } = useItems();
 
   // ── Estado de carga (solo en el primer fetch) ──────────────
   if (isLoading) {
@@ -84,8 +84,8 @@ export function HomeScreen(): React.JSX.Element {
     );
   }
 
-  // ── Estado de error ────────────────────────────────────────
-  if (isError) {
+  // ── Estado de error sin datos en caché ────────────────────
+  if (isError && !data) {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>❌ No se pudo cargar el catálogo</Text>
@@ -97,11 +97,11 @@ export function HomeScreen(): React.JSX.Element {
     );
   }
 
-  const products = data ?? [];
-  const total = products.reduce((sum, product) => sum + product.price, 0);
+  const items = data ?? [];
+  const total = items.reduce((sum, item) => sum + item.price, 0);
 
-  const renderItem: ListRenderItem<Product> = ({ item }) => (
-    <ProductCard
+  const renderItem: ListRenderItem<Item> = ({ item }) => (
+    <ItemCard
       item={item}
       onPress={() =>
         navigation.navigate('HomeDetail', { id: item.id, name: item.name })
@@ -112,7 +112,7 @@ export function HomeScreen(): React.JSX.Element {
   return (
     <View style={styles.container}>
       <FlatList
-        data={products}
+        data={items}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
@@ -121,24 +121,16 @@ export function HomeScreen(): React.JSX.Element {
         onRefresh={() => refetch()}
         refreshing={isFetching && !isLoading}
         ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.sectionLabel}>
-              {products.length} producto{products.length !== 1 ? 's' : ''} · $
-              {total.toLocaleString('es-CO')}
-            </Text>
-            <Pressable
-              onPress={() => navigation.navigate('CreateProduct')}
-              style={styles.addButton}
-            >
-              <Text style={styles.addButtonText}>+ Agregar</Text>
-            </Pressable>
-          </View>
+          <Text style={styles.sectionLabel}>
+            {items.length} producto{items.length !== 1 ? 's' : ''} · $
+            {total.toLocaleString('es-CO')}
+          </Text>
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyTitle}>No hay productos disponibles.</Text>
             <Pressable
-              onPress={() => navigation.navigate('CreateProduct')}
+              onPress={() => navigation.navigate('HomeCreate')}
               style={styles.retryButton}
             >
               <Text style={styles.retryButtonText}>Crear el primero</Text>
@@ -164,29 +156,11 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl,
     flexGrow: 1,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-    gap: SPACING.sm,
-  },
   sectionLabel: {
     ...TYPOGRAPHY.label,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    flex: 1,
-  },
-  addButton: {
-    backgroundColor: COLORS.accent,
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-  },
-  addButtonText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.background,
-    fontWeight: '700',
+    marginBottom: SPACING.sm,
   },
   separator: {
     height: SPACING.sm,

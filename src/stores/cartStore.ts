@@ -5,11 +5,11 @@
 
 import { create } from 'zustand';
 
-import type { Product } from '../types';
+import type { Item } from '../types';
 
 interface CartStore {
-  items: Product[];
-  addItem: (item: Product) => void;
+  items: Item[];
+  addItem: (item: Item) => void;
   removeItem: (id: number) => void;
   clearAll: () => void;
   isItemSaved: (id: number) => boolean;
@@ -19,7 +19,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
   items: [],
 
   addItem: (item) => {
-    if (get().items.some((saved) => saved.id === item.id)) return;
+    if (get().items.some((savedItem) => savedItem.id === item.id)) return;
     set((state) => ({ items: [...state.items, item] }));
   },
 

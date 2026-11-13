@@ -1,6 +1,7 @@
 // src/screens/SavedScreen.tsx
 // Segunda pestaña: "Mi pedido".
-// Lee el estado de cliente desde Zustand (no desde TanStack Query).
+// Lee el estado de cliente directamente desde Zustand (sin props).
+// El catálogo del servidor NO se guarda aquí: eso vive en TanStack Query.
 
 import React from 'react';
 import {
@@ -13,12 +14,17 @@ import {
   type ListRenderItem,
 } from 'react-native';
 
-import { useCartStore } from '../stores/cartStore';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../theme';
-import type { Product } from '../types';
+import type { Item } from '../types';
+
+import { useCartStore } from '../stores/cartStore';
+
+// ============================================================
+// SUB-COMPONENTE: SavedItem
+// ============================================================
 
 interface SavedItemProps {
-  item: Product;
+  item: Item;
   onRemove: () => void;
 }
 
@@ -52,13 +58,18 @@ function SavedItem({ item, onRemove }: SavedItemProps): React.JSX.Element {
   );
 }
 
+// ============================================================
+// PANTALLA: SavedScreen
+// ============================================================
+
 export function SavedScreen(): React.JSX.Element {
+  // Solo estado de cliente: el pedido elegido por el usuario.
   const items = useCartStore((state) => state.items);
   const removeItem = useCartStore((state) => state.removeItem);
   const clearAll = useCartStore((state) => state.clearAll);
-  const total = items.reduce((sum, item) => sum + item.price, 0);
+  const total = items.reduce((sum, i) => sum + i.price, 0);
 
-  const renderItem: ListRenderItem<Product> = ({ item }) => (
+  const renderItem: ListRenderItem<Item> = ({ item }) => (
     <SavedItem item={item} onRemove={() => removeItem(item.id)} />
   );
 
@@ -74,8 +85,7 @@ export function SavedScreen(): React.JSX.Element {
           items.length > 0 ? (
             <View style={styles.header}>
               <Text style={styles.sectionLabel}>
-                {items.length} producto{items.length !== 1 ? 's' : ''} · Total $
-                {total.toLocaleString('es-CO')}
+                {items.length} producto{items.length !== 1 ? 's' : ''} · Total ${total.toLocaleString('es-CO')}
               </Text>
               <Pressable onPress={clearAll} style={styles.clearButton}>
                 <Text style={styles.clearButtonText}>Limpiar todo</Text>
@@ -85,7 +95,7 @@ export function SavedScreen(): React.JSX.Element {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>🛒</Text>
+            <Text style={styles.emptyIcon}>☆</Text>
             <Text style={styles.emptyTitle}>Tu pedido está vacío</Text>
             <Text style={styles.emptySubtitle}>
               Ve al catálogo y agrega productos a tu pedido.
@@ -96,6 +106,10 @@ export function SavedScreen(): React.JSX.Element {
     </View>
   );
 }
+
+// ============================================================
+// ESTILOS
+// ============================================================
 
 const styles = StyleSheet.create({
   container: {
@@ -112,13 +126,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: SPACING.sm,
-    gap: SPACING.sm,
   },
   sectionLabel: {
     ...TYPOGRAPHY.label,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    flex: 1,
   },
   clearButton: {
     padding: SPACING.xs,
@@ -156,7 +168,6 @@ const styles = StyleSheet.create({
   },
   cardDescription: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.success,
   },
   removeButton: {
     width: 32,

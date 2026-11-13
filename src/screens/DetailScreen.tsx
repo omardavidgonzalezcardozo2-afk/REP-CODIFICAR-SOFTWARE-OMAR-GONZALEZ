@@ -1,7 +1,7 @@
 // src/screens/DetailScreen.tsx
-// Detalle del producto. Usa useProductById para intentar traer
-// datos frescos del servidor y mantiene el botón de "Mi pedido"
-// conectado al store de Zustand.
+// Detalle del producto. Usa useItemById para traer datos frescos del
+// servidor y mantiene el botón "Guardar" conectado a Zustand.
+// El estado del servidor (producto, loading, error) vive en TanStack Query.
 
 import React from 'react';
 import {
@@ -15,22 +15,27 @@ import {
 } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 
-import { useProductById } from '../hooks/useProducts';
+import { CATEGORY_LABELS } from '../constants/categories';
+import { useItemById } from '../hooks/useItems';
 import { useCartStore } from '../stores/cartStore';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../theme';
 import type { HomeStackParamList } from '../navigation/types';
 
 type DetailRouteProp = RouteProp<HomeStackParamList, 'HomeDetail'>;
 
+// ============================================================
+// PANTALLA: DetailScreen
+// ============================================================
+
 export function DetailScreen(): React.JSX.Element {
   const route = useRoute<DetailRouteProp>();
   const { id, name } = route.params;
 
-  const { data: item, isLoading, isError, refetch, error } = useProductById(id);
+  const { data: item, isLoading, isError, refetch, error } = useItemById(id);
 
   // Selector específico: el botón se actualiza cuando cambia este producto.
   const isSaved = useCartStore((state) =>
-    state.items.some((product) => product.id === id),
+    state.items.some((savedItem) => savedItem.id === id),
   );
   const addItem = useCartStore((state) => state.addItem);
   const removeItem = useCartStore((state) => state.removeItem);
@@ -55,6 +60,7 @@ export function DetailScreen(): React.JSX.Element {
     );
   }
 
+  // Error sin datos: ofrecemos reintentar la petición.
   if (isError && !item) {
     return (
       <View style={styles.centered}>
@@ -69,6 +75,7 @@ export function DetailScreen(): React.JSX.Element {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Imagen del ítem */}
       {item && (
         <Image
           source={item.image}
@@ -78,9 +85,10 @@ export function DetailScreen(): React.JSX.Element {
         />
       )}
 
+      {/* Información principal */}
       <View style={styles.info}>
         <Text style={styles.title}>{item?.name ?? name}</Text>
-        <Text style={styles.id}>ID: {id}</Text>
+        <Text style={styles.id}>Código: {id}</Text>
 
         {item && (
           <>
@@ -89,12 +97,18 @@ export function DetailScreen(): React.JSX.Element {
             </Text>
             <Text style={styles.description}>{item.description}</Text>
             <Text style={styles.meta}>
-              Categoría: {item.category} · Stock: {item.stock}
+              Categoría: {CATEGORY_LABELS[item.category]} · Existencias:{' '}
+              {item.stock}
             </Text>
           </>
         )}
       </View>
 
+      {/* ──────────────────────────────────────────────────── */}
+      {/* BOTÓN GUARDAR / QUITAR — conectado al store Zustand  */}
+      {/* ──────────────────────────────────────────────────── */}
+      {/* Al guardar aquí, el badge del Tab "Mi pedido" se actualiza
+          automáticamente sin pasar props ni callbacks. */}
       <Pressable
         style={({ pressed }) => [
           styles.saveButton,
@@ -111,12 +125,16 @@ export function DetailScreen(): React.JSX.Element {
             isSaved && styles.saveButtonTextActive,
           ]}
         >
-          {isSaved ? '✓ Guardado en mi pedido' : '+ Guardar en mi pedido'}
+          {isSaved ? '✓  Guardado en mi pedido' : '+  Guardar en mi pedido'}
         </Text>
       </Pressable>
     </ScrollView>
   );
 }
+
+// ============================================================
+// ESTILOS
+// ============================================================
 
 const styles = StyleSheet.create({
   container: {

@@ -6,7 +6,7 @@ import axios from 'axios';
 
 // DummyJSON es una API REST pública con productos de prueba.
 // Usamos la categoría "groceries" porque encaja con la distribuidora de comida.
-// Puedes cambiarla con una variable de entorno EXPO_PUBLIC_API_URL.
+// Puedes cambiar la URL con la variable de entorno EXPO_PUBLIC_API_URL.
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? 'https://dummyjson.com';
 
@@ -30,3 +30,33 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+// Traduce un error de Axios (o de cualquier tipo) a un mensaje en español.
+// Así las pantallas nunca muestran textos técnicos como "Network Error".
+export function getApiErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    // Sin respuesta significa que no se pudo llegar al servidor.
+    if (!error.response) {
+      if (error.code === 'ECONNABORTED') {
+        return 'La solicitud tardó demasiado. Revisa tu conexión e inténtalo de nuevo.';
+      }
+      return 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
+    }
+
+    const status = error.response.status;
+
+    if (status === 404) {
+      return 'El producto solicitado no existe en el servidor.';
+    }
+    if (status >= 500) {
+      return 'El servidor presentó un error. Inténtalo de nuevo más tarde.';
+    }
+    return `La solicitud falló con el código ${status}. Inténtalo de nuevo.`;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'Ocurrió un error inesperado. Inténtalo de nuevo.';
+}

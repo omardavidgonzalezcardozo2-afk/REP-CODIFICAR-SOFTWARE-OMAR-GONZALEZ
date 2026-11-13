@@ -12,5 +12,5 @@ export type HomeStackParamList = {
     id: number;
     name: string;
   };
-  CreateProduct: undefined;
+  HomeCreate: undefined;
 };

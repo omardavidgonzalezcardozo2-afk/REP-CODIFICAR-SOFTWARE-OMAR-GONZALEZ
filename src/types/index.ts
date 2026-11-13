@@ -1,6 +1,6 @@
 // src/types/index.ts
 // Modelos del dominio: distribuidora de comida.
-// El estado del servidor (productos) vive en TanStack Query;
+// El estado del servidor (catálogo) vive en TanStack Query;
 // el estado del cliente (mi pedido) vive en Zustand.
 
 import type { ImageSourcePropType } from 'react-native';
@@ -13,7 +13,7 @@ export type ProductCategory =
   | 'verduras'
   | 'abarrotes';
 
-export interface Product {
+export interface Item {
   id: number;
   name: string;
   description: string;
@@ -24,6 +24,6 @@ export interface Product {
   image: ImageSourcePropType;
 }
 
-// Lo que enviamos al servidor para crear un producto.
-// El id y la imagen los asigna el servidor (o los resolvemos en la capa API).
-export type CreateProductPayload = Omit<Product, 'id' | 'image'>;
+// Datos que enviamos al servidor para crear un producto.
+// El id y la imagen los resuelve la capa de red.
+export type CreateItemPayload = Omit<Item, 'id' | 'image'>;

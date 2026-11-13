@@ -5,9 +5,9 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, Text } from 'react-native';
+import { Pressable } from 'react-native';
 
-import { CreateProductScreen } from '../screens/CreateProductScreen';
+import { CreateScreen } from '../screens/CreateScreen';
 import { DetailScreen } from '../screens/DetailScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { SavedScreen } from '../screens/SavedScreen';
@@ -33,13 +33,13 @@ function HomeStackNavigator(): React.JSX.Element {
           title: 'Catálogo',
           headerRight: () => (
             <Pressable
-              onPress={() => navigation.navigate('CreateProduct')}
+              onPress={() => navigation.navigate('HomeCreate')}
               accessibilityLabel="Agregar producto"
+              accessibilityRole="button"
               hitSlop={8}
+              style={({ pressed }) => (pressed ? { opacity: 0.6 } : undefined)}
             >
-              <Text style={{ color: COLORS.accent, fontSize: 26, fontWeight: '300' }}>
-                +
-              </Text>
+              <Ionicons name="add" size={28} color={COLORS.accent} />
             </Pressable>
           ),
         })}
@@ -50,8 +50,8 @@ function HomeStackNavigator(): React.JSX.Element {
         options={({ route }) => ({ title: route.params.name })}
       />
       <HomeStack.Screen
-        name="CreateProduct"
-        component={CreateProductScreen}
+        name="HomeCreate"
+        component={CreateScreen}
         options={{ title: 'Nuevo producto', presentation: 'modal' }}
       />
     </HomeStack.Navigator>
@@ -73,21 +73,13 @@ export function RootNavigator(): React.JSX.Element {
         tabBarIcon: ({ focused, color, size }) => {
           const iconName: keyof typeof Ionicons.glyphMap =
             route.name === 'Home'
-              ? focused
-                ? 'storefront'
-                : 'storefront-outline'
-              : focused
-                ? 'cart'
-                : 'cart-outline';
+              ? focused ? 'storefront' : 'storefront-outline'
+              : focused ? 'cart' : 'cart-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
     >
-      <Tab.Screen
-        name="Home"
-        component={HomeStackNavigator}
-        options={{ tabBarLabel: 'Catálogo' }}
-      />
+      <Tab.Screen name="Home" component={HomeStackNavigator} options={{ tabBarLabel: 'Catálogo' }} />
       <Tab.Screen
         name="Saved"
         component={SavedScreen}
