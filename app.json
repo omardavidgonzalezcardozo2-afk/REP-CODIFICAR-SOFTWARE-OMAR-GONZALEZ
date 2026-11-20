@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "week06-formularios-zod",
+    "slug": "week06-formularios-zod",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "platforms": ["ios", "android", "web"],
+    "web": {
+      "bundler": "metro"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "dev.bootcamp.week06formularios"
+    },
+    "android": {
+      "package": "dev.bootcamp.week06formularios"
+    },
+    "plugins": [
+      "expo-status-bar",
+      "expo-font"
+    ]
+  }
+}

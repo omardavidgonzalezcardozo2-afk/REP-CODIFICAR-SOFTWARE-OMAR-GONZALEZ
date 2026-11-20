@@ -1,0 +1,283 @@
+// src/screens/DetailScreen.tsx
+// Detalle del producto. Usa useItemById para traer datos frescos del
+// servidor y mantiene el botón "Guardar" conectado a Zustand.
+// El estado del servidor (producto, loading, error) vive en TanStack Query.
+
+import React, { useEffect } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import {
+  useNavigation,
+  useRoute,
+  type RouteProp,
+} from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+import { CATEGORY_LABELS } from '../constants/categories';
+import { useItemById } from '../hooks/useItems';
+import { useCartStore } from '../stores/cartStore';
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../theme';
+import type { HomeStackParamList } from '../navigation/types';
+
+type DetailRouteProp = RouteProp<HomeStackParamList, 'HomeDetail'>;
+type DetailNavProp = NativeStackNavigationProp<HomeStackParamList, 'HomeDetail'>;
+
+// ============================================================
+// PANTALLA: DetailScreen
+// ============================================================
+
+export function DetailScreen(): React.JSX.Element {
+  const route = useRoute<DetailRouteProp>();
+  const navigation = useNavigation<DetailNavProp>();
+  const { id, name } = route.params;
+
+  const { data: item, isLoading, isError, refetch, error } = useItemById(id);
+
+  // Si el producto se edita, el título del header refleja el nombre nuevo.
+  useEffect(() => {
+    if (item) {
+      navigation.setOptions({ title: item.name });
+    }
+  }, [item, navigation]);
+
+  // Selector específico: el botón se actualiza cuando cambia este producto.
+  const isSaved = useCartStore((state) =>
+    state.items.some((savedItem) => savedItem.id === id),
+  );
+  const addItem = useCartStore((state) => state.addItem);
+  const removeItem = useCartStore((state) => state.removeItem);
+
+  const handleToggleSave = (): void => {
+    if (!item) return;
+
+    if (isSaved) {
+      removeItem(id);
+    } else {
+      addItem(item);
+    }
+  };
+
+  // Solo mostramos el spinner si no tenemos ni siquiera datos en caché.
+  if (isLoading && !item) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={COLORS.accent} />
+        <Text style={styles.loadingText}>Cargando detalle...</Text>
+      </View>
+    );
+  }
+
+  // Error sin datos: ofrecemos reintentar la petición.
+  if (isError && !item) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>No se pudo cargar el detalle</Text>
+        <Text style={styles.errorDetail}>{error.message}</Text>
+        <Pressable style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.retryButtonText}>Reintentar</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Imagen del ítem */}
+      {item && (
+        <Image
+          source={item.image}
+          style={styles.hero}
+          resizeMode="cover"
+          accessibilityIgnoresInvertColors
+        />
+      )}
+
+      {/* Información principal */}
+      <View style={styles.info}>
+        <Text style={styles.title}>{item?.name ?? name}</Text>
+        <Text style={styles.id}>Código: {id}</Text>
+
+        {item && (
+          <>
+            <Text style={styles.price}>
+              ${item.price.toLocaleString('es-CO')} / {item.unit}
+            </Text>
+            <Text style={styles.description}>{item.description}</Text>
+            <Text style={styles.meta}>
+              Categoría: {CATEGORY_LABELS[item.category]} · Existencias:{' '}
+              {item.stock}
+            </Text>
+          </>
+        )}
+      </View>
+
+      {/* ──────────────────────────────────────────────────── */}
+      {/* BOTÓN GUARDAR / QUITAR — conectado al store Zustand  */}
+      {/* ──────────────────────────────────────────────────── */}
+      {/* Al guardar aquí, el badge del Tab "Mi pedido" se actualiza
+          automáticamente sin pasar props ni callbacks. */}
+      <Pressable
+        style={({ pressed }) => [
+          styles.saveButton,
+          isSaved && styles.saveButtonActive,
+          pressed && styles.saveButtonPressed,
+        ]}
+        onPress={handleToggleSave}
+        disabled={!item}
+        testID="save-button"
+      >
+        <Text
+          style={[
+            styles.saveButtonText,
+            isSaved && styles.saveButtonTextActive,
+          ]}
+        >
+          {isSaved ? '✓  Guardado en mi pedido' : '+  Guardar en mi pedido'}
+        </Text>
+      </Pressable>
+
+      {/* ──────────────────────────────────────────────────── */}
+      {/* BOTÓN EDITAR — abre el formulario reutilizable        */}
+      {/* ──────────────────────────────────────────────────── */}
+      <Pressable
+        style={({ pressed }) => [
+          styles.editButton,
+          pressed && styles.saveButtonPressed,
+        ]}
+        onPress={() =>
+          navigation.navigate('HomeEdit', {
+            id,
+            name: item?.name ?? name,
+          })
+        }
+        accessibilityRole="button"
+        disabled={!item}
+        testID="edit-button"
+      >
+        <Text style={styles.editButtonText}>Editar producto</Text>
+      </Pressable>
+    </ScrollView>
+  );
+}
+
+// ============================================================
+// ESTILOS
+// ============================================================
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  content: {
+    padding: SPACING.lg,
+    gap: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.md,
+    padding: SPACING.lg,
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    ...TYPOGRAPHY.caption,
+  },
+  hero: {
+    width: '100%',
+    height: 220,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  info: {
+    gap: SPACING.sm,
+  },
+  title: {
+    ...TYPOGRAPHY.h2,
+  },
+  id: {
+    ...TYPOGRAPHY.label,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  description: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textSecondary,
+    lineHeight: 24,
+    marginTop: SPACING.sm,
+  },
+  price: {
+    ...TYPOGRAPHY.h3,
+    color: COLORS.success,
+  },
+  meta: {
+    ...TYPOGRAPHY.caption,
+    marginTop: SPACING.sm,
+  },
+  saveButton: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: SPACING.md,
+    alignItems: 'center',
+  },
+  saveButtonActive: {
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
+  },
+  saveButtonPressed: {
+    opacity: 0.7,
+  },
+  saveButtonText: {
+    ...TYPOGRAPHY.body,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  saveButtonTextActive: {
+    color: COLORS.background,
+  },
+  editButton: {
+    borderWidth: 1,
+    borderColor: COLORS.accent,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.md,
+    alignItems: 'center',
+  },
+  editButtonText: {
+    ...TYPOGRAPHY.body,
+    fontWeight: '600',
+    color: COLORS.accent,
+  },
+  errorText: {
+    ...TYPOGRAPHY.h3,
+    color: COLORS.error,
+    textAlign: 'center',
+  },
+  errorDetail: {
+    ...TYPOGRAPHY.caption,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: COLORS.accent,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+  },
+  retryButtonText: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.background,
+    fontWeight: '600',
+  },
+});
