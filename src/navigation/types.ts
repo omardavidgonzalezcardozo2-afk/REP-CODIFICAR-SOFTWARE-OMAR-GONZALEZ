@@ -4,6 +4,7 @@
 export type RootTabParamList = {
   Home: undefined;
   Saved: undefined;
+  Settings: undefined;
 };
 
 export type HomeStackParamList = {

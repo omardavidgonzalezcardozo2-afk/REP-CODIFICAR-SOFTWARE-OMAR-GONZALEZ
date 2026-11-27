@@ -10,6 +10,8 @@ import {
   fetchItems,
   updateItem,
 } from '../services/itemsApi';
+import { loadItemsCache, saveItemsCache } from '../storage/itemsCache';
+import { useOfflineStore } from '../stores/offlineStore';
 import type { CreateItemPayload, Item, UpdateItemPayload } from '../types';
 
 // Query key semántica y centralizada.
@@ -18,9 +20,27 @@ import type { CreateItemPayload, Item, UpdateItemPayload } from '../types';
 export const ITEMS_QUERY_KEY = ['products'] as const;
 
 export function useItems() {
+  const setFromCache = useOfflineStore((state) => state.setFromCache);
+
   return useQuery<Item[], Error>({
     queryKey: ITEMS_QUERY_KEY,
-    queryFn: fetchItems,
+    queryFn: async () => {
+      try {
+        const data = await fetchItems();
+        await saveItemsCache(data);
+        setFromCache(false);
+        return data;
+      } catch (error) {
+        // Sin red: usamos el respaldo local. La forma de datos no cambia.
+        const cached = await loadItemsCache();
+        if (cached) {
+          setFromCache(true);
+          return cached;
+        }
+        // Si no hay respaldo, mostramos el error original de la petición.
+        throw error;
+      }
+    },
   });
 }
 

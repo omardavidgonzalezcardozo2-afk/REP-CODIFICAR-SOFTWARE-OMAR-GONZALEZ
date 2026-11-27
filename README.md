@@ -145,3 +145,72 @@ funcionan igual en web y en móvil (no se usa `Alert.alert`).
    desaparecería. Al guardar cada edición en `Map<number, Item>` dentro de
    `itemsApi.ts` y aplicarla en `fetchItems`/`fetchItemById`, el cambio
    sobrevive a cualquier recarga de la lista o del detalle durante la sesión.
+
+## Semana 07 — Persistencia local
+
+El dominio sigue siendo una **distribuidora de comida**: el catálogo de
+productos, "Mi pedido" y el PIN de acceso a bodega. La Semana 07 agrega una
+tercera pestaña, **Ajustes**, y persistencia local sin cambiar el modelo `Item`
+(`name`, `description`, `price`, `unit`, `category`, `stock`, `image`).
+
+### Qué se guarda y dónde
+
+| Almacenamiento | Qué guarda | Por qué |
+|---|---|---|
+| **MMKV** (`react-native-mmkv` v4, `createMMKV`) | Preferencias del catálogo: ordenar por nombre/precio/existencias, orden ascendente/descendente, modo compacto y productos por página (5/10/20) | Es síncrono y muy rápido; los hooks `useMMKVString` / `useMMKVBoolean` / `useMMKVNumber` actualizan la UI en tiempo real, sin botón de guardar |
+| **AsyncStorage** | Respaldo del catálogo (`@distribuidora/items_cache_v1`) con los `Item` traídos de DummyJSON | Permite mostrar la lista cuando falla la red. TanStack Query sigue siendo la fuente de verdad en línea; AsyncStorage solo es el respaldo offline |
+| **SecureStore** (`expo-secure-store`) | PIN de acceso de bodega (`warehouse_pin`) | Es un dato sensible: el PIN se guarda cifrado en Keychain/Keystore. **Nunca** se guarda en MMKV ni en AsyncStorage, y la app solo comprueba si existe o si coincide, sin mostrarlo |
+
+La dependencia `react-native-nitro-modules` acompaña a MMKV v4 (motor Nitro).
+Toda la lógica de almacenamiento vive en `src/storage/`, `src/hooks/` y
+`src/stores/`; las pantallas solo consumen hooks.
+
+### Archivos nuevos
+
+```
+src/
+├── storage/
+│   ├── mmkv.ts           # Instancia createMMKV({ id: 'app-storage' })
+│   └── itemsCache.ts     # saveItemsCache / loadItemsCache / clearItemsCache
+├── hooks/
+│   ├── usePreferences.ts # Preferencias MMKV con defaults y setters tipados
+│   └── useSecureCode.ts  # PIN en SecureStore (hasCode / save / verify / remove)
+├── stores/
+│   └── offlineStore.ts   # isFromCache para avisar que la lista viene del respaldo
+└── screens/
+    └── SettingsScreen.tsx # Pestaña "Ajustes": preferencias + seguridad
+```
+
+Modified: `src/hooks/useItems.ts` (fallback a caché dentro del `queryFn`),
+`src/screens/HomeScreen.tsx` (orden, modo compacto, paginación "Ver más" y
+banner offline), `src/navigation/types.ts`, `src/navigation/RootNavigator.tsx`,
+`package.json` (script `tsc`), `.gitignore` y este README. Catálogo, detalle,
+creación, edición, carrito, traducciones, imágenes y estilos de la Semana 06
+quedan intactos.
+
+### Build nativo y comprobación de tipos
+
+```bash
+pnpm install
+pnpm exec tsc --noEmit   # o: pnpm tsc
+
+pnpm expo run:android    # genera y abre android/ (ignorado por git)
+pnpm expo run:ios        # genera y abre ios/ (ignorado por git)
+```
+
+MMKV/Nitro y SecureStore necesitan código nativo: **no funcionan en Expo Go**.
+Por eso el build se hace con `pnpm expo run:android` o `pnpm expo run:ios`.
+
+### Cómo probar offline
+
+1. Con la app recién abierta y con internet, entra al catálogo: `fetchItems()`
+   guarda la lista en AsyncStorage (`saveItemsCache`).
+2. Activa el modo avión del dispositivo (o corta el wifi) y haz pull-to-refresh
+   en el catálogo. `useItems` intenta la API, falla y lee `loadItemsCache()`.
+3. Debe aparecer el banner **"⚠️ Sin red — mostrando datos guardados"** y la
+   lista con los mismos productos. Si no hay caché, se mantiene el error de red.
+4. En **Ajustes** cambia el orden, el modo compacto y los productos por página;
+   comprueba que el catálogo reacciona al instante y que los valores siguen
+   después de cerrar y reabrir la app.
+5. En **Seguridad**, guarda un PIN de 4 o más dígitos, verifícalo con otro
+   valor (debe decir "PIN incorrecto") y elimínalo. El PIN nunca se muestra.

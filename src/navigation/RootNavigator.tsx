@@ -1,5 +1,5 @@
 // src/navigation/RootNavigator.tsx
-// Tab Navigator (Catálogo / Mi pedido) + Stack anidado en Home.
+// Tab Navigator (Catálogo / Mi pedido / Ajustes) + Stack anidado en Home.
 // El Stack tiene cuatro pantallas: lista, detalle, creación y edición.
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -12,6 +12,7 @@ import { DetailScreen } from '../screens/DetailScreen';
 import { EditScreen } from '../screens/EditScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { SavedScreen } from '../screens/SavedScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
 import { useCartStore } from '../stores/cartStore';
 import { COLORS } from '../theme';
 import type { HomeStackParamList, RootTabParamList } from './types';
@@ -77,10 +78,14 @@ export function RootNavigator(): React.JSX.Element {
         tabBarInactiveTintColor: COLORS.textSecondary,
         tabBarStyle: { backgroundColor: COLORS.surface },
         tabBarIcon: ({ focused, color, size }) => {
-          const iconName: keyof typeof Ionicons.glyphMap =
-            route.name === 'Home'
-              ? focused ? 'storefront' : 'storefront-outline'
-              : focused ? 'cart' : 'cart-outline';
+          let iconName: keyof typeof Ionicons.glyphMap;
+          if (route.name === 'Home') {
+            iconName = focused ? 'storefront' : 'storefront-outline';
+          } else if (route.name === 'Saved') {
+            iconName = focused ? 'cart' : 'cart-outline';
+          } else {
+            iconName = focused ? 'settings' : 'settings-outline';
+          }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
@@ -93,6 +98,11 @@ export function RootNavigator(): React.JSX.Element {
           tabBarLabel: 'Mi pedido',
           tabBarBadge: cartCount > 0 ? cartCount : undefined,
         }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ tabBarLabel: 'Ajustes' }}
       />
     </Tab.Navigator>
   );

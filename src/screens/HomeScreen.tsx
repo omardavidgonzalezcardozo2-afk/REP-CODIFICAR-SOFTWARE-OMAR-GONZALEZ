@@ -2,7 +2,7 @@
 // Pantalla principal: catálogo cargado desde la API con useQuery.
 // Maneja loading, error, vacío y pull-to-refresh.
 
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -17,6 +17,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 
 import { useItems } from '../hooks/useItems';
+import { usePreferences } from '../hooks/usePreferences';
+import { useOfflineStore } from '../stores/offlineStore';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../theme';
 import type { Item } from '../types';
 import type { HomeStackParamList } from '../navigation/types';
@@ -29,13 +31,22 @@ type HomeScreenNavProp = NativeStackNavigationProp<HomeStackParamList, 'HomeList
 
 interface ItemCardProps {
   item: Item;
+  compact: boolean;
   onPress: () => void;
 }
 
-function ItemCard({ item, onPress }: ItemCardProps): React.JSX.Element {
+function ItemCard({
+  item,
+  compact,
+  onPress,
+}: ItemCardProps): React.JSX.Element {
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      style={({ pressed }) => [
+        styles.card,
+        compact && styles.cardCompact,
+        pressed && styles.cardPressed,
+      ]}
       onPress={onPress}
       testID={`item-card-${item.id}`}
     >
@@ -50,14 +61,18 @@ function ItemCard({ item, onPress }: ItemCardProps): React.JSX.Element {
         <Text style={styles.cardTitle} numberOfLines={1}>
           {item.name}
         </Text>
-        <Text style={styles.cardDescription} numberOfLines={2}>
-          {item.description}
-        </Text>
+        {!compact ? (
+          <Text style={styles.cardDescription} numberOfLines={2}>
+            {item.description}
+          </Text>
+        ) : null}
         <View style={styles.cardMetaRow}>
           <Text style={styles.cardPrice}>
             ${item.price.toLocaleString('es-CO')} / {item.unit}
           </Text>
-          <Text style={styles.cardStock}>Existencias: {item.stock}</Text>
+          {!compact ? (
+            <Text style={styles.cardStock}>Existencias: {item.stock}</Text>
+          ) : null}
         </View>
       </View>
 
@@ -73,6 +88,32 @@ function ItemCard({ item, onPress }: ItemCardProps): React.JSX.Element {
 export function HomeScreen(): React.JSX.Element {
   const navigation = useNavigation<HomeScreenNavProp>();
   const { data, isLoading, isError, isFetching, refetch, error } = useItems();
+  const { sortBy, sortOrder, compactMode, itemsPerPage } = usePreferences();
+  const isFromCache = useOfflineStore((state) => state.isFromCache);
+  const [visibleCount, setVisibleCount] = useState<number>(itemsPerPage);
+
+  // Al cambiar "Productos por página" volvemos a mostrar solo los primeros N.
+  useEffect(() => {
+    setVisibleCount(itemsPerPage);
+  }, [itemsPerPage]);
+
+  // Copia antes de ordenar: nunca mutamos el arreglo del caché de TanStack.
+  const sortedItems = useMemo(() => {
+    const copy = [...(data ?? [])];
+    const direction = sortOrder === 'asc' ? 1 : -1;
+
+    return copy.sort((a, b) => {
+      if (sortBy === 'price') return (a.price - b.price) * direction;
+      if (sortBy === 'stock') return (a.stock - b.stock) * direction;
+      return a.name.localeCompare(b.name, 'es') * direction;
+    });
+  }, [data, sortBy, sortOrder]);
+
+  const visibleItems = useMemo(
+    () => sortedItems.slice(0, visibleCount),
+    [sortedItems, visibleCount],
+  );
+  const hasMore = visibleCount < sortedItems.length;
 
   // ── Estado de carga (solo en el primer fetch) ──────────────
   if (isLoading) {
@@ -103,6 +144,7 @@ export function HomeScreen(): React.JSX.Element {
   const renderItem: ListRenderItem<Item> = ({ item }) => (
     <ItemCard
       item={item}
+      compact={compactMode}
       onPress={() =>
         navigation.navigate('HomeDetail', { id: item.id, name: item.name })
       }
@@ -111,8 +153,15 @@ export function HomeScreen(): React.JSX.Element {
 
   return (
     <View style={styles.container}>
+      {isFromCache ? (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineBannerText}>
+            ⚠️ Sin red — mostrando datos guardados
+          </Text>
+        </View>
+      ) : null}
       <FlatList
-        data={items}
+        data={visibleItems}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
@@ -137,6 +186,20 @@ export function HomeScreen(): React.JSX.Element {
             </Pressable>
           </View>
         }
+        ListFooterComponent={
+          hasMore ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.moreButton,
+                pressed && styles.cardPressed,
+              ]}
+              onPress={() => setVisibleCount((count) => count + itemsPerPage)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.moreButtonText}>Ver más</Text>
+            </Pressable>
+          ) : undefined
+        }
       />
     </View>
   );
@@ -156,6 +219,18 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl,
     flexGrow: 1,
   },
+  offlineBanner: {
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.warning,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  offlineBannerText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.warning,
+    textAlign: 'center',
+  },
   sectionLabel: {
     ...TYPOGRAPHY.label,
     textTransform: 'uppercase',
@@ -174,6 +249,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     gap: SPACING.md,
+  },
+  cardCompact: {
+    paddingVertical: SPACING.sm,
   },
   cardPressed: {
     opacity: 0.7,
@@ -255,5 +333,20 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     textAlign: 'center',
+  },
+  moreButton: {
+    alignSelf: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.accent,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    marginTop: SPACING.md,
+  },
+  moreButtonText: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.accent,
+    fontWeight: '600',
   },
 });
